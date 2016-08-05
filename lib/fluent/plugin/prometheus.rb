@@ -34,6 +34,8 @@ module Fluent
           metrics << Fluent::Prometheus::Gauge.new(element, registry, labels)
         when 'counter'
           metrics << Fluent::Prometheus::Counter.new(element, registry, labels)
+        when 'pivot_counter'
+          metrics << Fluent::Prometheus::PivotCounter.new(element, registry, labels)
         else
           raise ConfigError, "type option must be 'counter', 'gauge' or 'summary'"
         end
@@ -169,6 +171,36 @@ module Fluent
         return if value.nil?
 
         @counter.increment(labels(record, expander, placeholders), value)
+      end
+    end
+    
+    class PivotCounter < Metric
+      def initialize(element, registry, labels)
+        super
+        if @key.nil?
+          raise ConfigError, "pivot_counter metric requires 'key' option"
+        end
+	@registry = registry
+	@desc = element['desc']
+        begin
+          @registry = 
+        rescue ::Prometheus::Client::Registry::AlreadyRegisteredError
+          @registry = Fluent::Prometheus::Metric.get(registry, element['name'].to_sym, :counter, element['desc'])
+        end
+      end
+
+      def instrument(record, expander, placeholders)
+        # find the field on which we're pivoting, else fail
+        pivot_val = record[@key]
+
+        return if pivot_val.nil?
+
+	pivot_val = pivot_val.to_sym
+
+	if not @registry.exist?(pivot_val)
+            @registry.counter(pivot_val, @desc)
+	end
+	@registry.get(pivot_val).increment(labels(record, expander, placeholders), 1)
       end
     end
 
