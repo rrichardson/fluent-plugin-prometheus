@@ -180,13 +180,8 @@ module Fluent
         if @key.nil?
           raise ConfigError, "pivot_counter metric requires 'key' option"
         end
-	@registry = registry
-	@desc = element['desc']
-        begin
-          @registry = 
-        rescue ::Prometheus::Client::Registry::AlreadyRegisteredError
-          @registry = Fluent::Prometheus::Metric.get(registry, element['name'].to_sym, :counter, element['desc'])
-        end
+        @registry = registry
+	      @desc = element['desc']
       end
 
       def instrument(record, expander, placeholders)
@@ -194,13 +189,13 @@ module Fluent
         pivot_val = record[@key]
 
         return if pivot_val.nil?
+        
+				pivot_val = pivot_val.to_sym
 
-	pivot_val = pivot_val.to_sym
-
-	if not @registry.exist?(pivot_val)
-            @registry.counter(pivot_val, @desc)
-	end
-	@registry.get(pivot_val).increment(labels(record, expander, placeholders), 1)
+        if not @registry.exist?(pivot_val)
+          @registry.counter(pivot_val, @desc)
+	      end
+        @registry.get(pivot_val).increment(labels(record, expander, placeholders), 1)
       end
     end
 
