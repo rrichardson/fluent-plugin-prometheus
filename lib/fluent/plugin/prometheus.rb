@@ -1,3 +1,4 @@
+require 'fluent/plugin/filter_record_transformer'
 require 'prometheus/client'
 require 'prometheus/client/formats/text'
 
@@ -48,7 +49,8 @@ module Fluent
       if defined?(Fluent::Filter) # for v0.12, built-in PlaceholderExpander
         begin
           require 'fluent/plugin/filter_record_transformer'
-          return Fluent::RecordTransformerFilter::PlaceholderExpander.new(log: log)
+          print 'We just required filter_record_transformer'
+          return Fluent::Plugin::RecordTransformerFilter::PlaceholderExpander.new(log: log)
         rescue LoadError => e
           raise ConfigError, "cannot find filter_record_transformer plugin: #{e.message}"
         end
@@ -215,7 +217,7 @@ module Fluent
 
       def instrument(record, expander, placeholders)
         if record[@key]
-          @summary.add(labels(record, expander, placeholders), record[@key])
+          @summary.observe(labels(record, expander, placeholders), record[@key])
         end
       end
     end
